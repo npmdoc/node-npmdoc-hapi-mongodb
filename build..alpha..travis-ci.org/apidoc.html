@@ -1,0 +1,191 @@
+<div class="apidocDiv">
+<style>
+/*csslint
+*/
+.apidocDiv {
+    background: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.apidocDiv a[href] {
+    color: #33f;
+    font-weight: bold;
+    text-decoration: none;
+}
+.apidocDiv a[href]:hover {
+    text-decoration: underline;
+}
+.apidocCodeCommentSpan {
+    background: #bbf;
+    color: #000;
+    display: block;
+}
+.apidocCodeKeywordSpan {
+    color: #d00;
+    font-weight: bold;
+}
+.apidocCodePre {
+    background: #eef;
+    border: 1px solid;
+    color: #777;
+    padding: 5px;
+    white-space: pre-wrap;
+}
+.apidocFooterDiv {
+    margin-top: 20px;
+    text-align: center;
+}
+.apidocModuleLi {
+    margin-top: 10px;
+}
+.apidocSectionDiv {
+    border-top: 1px solid;
+    margin-top: 20px;
+}
+.apidocSignatureSpan {
+    color: #777;
+    font-weight: bold;
+}
+</style>
+<h1>api documentation for
+    <a
+
+    >hapi-mongodb (v6.2.1)</a>
+</h1>
+<h4>A simple Hapi MongoDB connection plugin.</h4>
+<div class="apidocSectionDiv"><a
+    href="#apidoc.tableOfContents"
+    id="apidoc.tableOfContents"
+><h1>table of contents</h1></a><ol>
+
+    <li class="apidocModuleLi"><a href="#apidoc.module.hapi-mongodb">module hapi-mongodb</a><ol>
+
+        <li>
+
+            <a class="apidocElementLiA" href="#apidoc.element.hapi-mongodb.register">
+            function <span class="apidocSignatureSpan">hapi-mongodb.</span>register
+            <span class="apidocSignatureSpan">(server, pluginOptions, next)</span>
+            </a>
+
+        </li>
+
+    </ol></li>
+
+</ol></div>
+
+<div class="apidocSectionDiv">
+<h1><a href="#apidoc.module.hapi-mongodb" id="apidoc.module.hapi-mongodb">module hapi-mongodb</a></h1>
+
+
+    <h2>
+        <a href="#apidoc.element.hapi-mongodb.register" id="apidoc.element.hapi-mongodb.register">
+        function <span class="apidocSignatureSpan">hapi-mongodb.</span>register
+        <span class="apidocSignatureSpan">(server, pluginOptions, next)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">register = function (server, pluginOptions, next) {
+
+    optionsSchema.validate(pluginOptions, (err, options) =&#x3e; {
+
+        if (err) {
+            return next(err);
+        }
+
+        const decorationTypes = new Set(options.map((option) =&#x3e; typeof option.decorate));
+        if (decorationTypes.size &#x3e; 1) {
+            return next(new Error(&#x27;You cannot mix different types of decorate options&#x27;));
+        }
+
+        const expose = {
+            lib: Mongodb,
+            ObjectID
+        };
+
+        const connect = (connectionOptions, done) =&#x3e; {
+
+            if (connectionOptions.settings &#x26;&#x26; typeof connectionOptions.settings.promiseLibrary === &#x27;string&#x27;) {
+                connectionOptions.settings.promiseLibrary = require(connectionOptions.settings.promiseLibrary);
+            }
+
+            MongoClient.connect(connectionOptions.url, connectionOptions.settings, (err, db) =&#x3e; {
+
+                if (err) {
+                    return done(err);
+                }
+
+                const connectionOptionsToLog = Object.assign({}, connectionOptions, {
+                    url: connectionOptions.url.replace(/mongodb:\/\/([^/]+):([^@]+)@/, &#x27;mongodb://$1:******@&#x27;)
+                });
+                server.log([&#x27;hapi-mongodb&#x27;, &#x27;info&#x27;], &#x27;MongoClient connection created for &#x27; + JSON.stringify(connectionOptionsToLog
+));
+
+                if (typeof connectionOptions.decorate === &#x27;string&#x27;) {
+                    const decoration = Object.assign({ db }, expose);
+                    server.decorate(&#x27;server&#x27;, connectionOptions.decorate, decoration);
+                    server.decorate(&#x27;request&#x27;, connectionOptions.decorate, decoration);
+                }
+
+                done(null, db);
+            });
+        };
+
+        Async.map(options, connect, (err, dbs) =&#x3e; {
+
+            if (err) {
+                server.log([&#x27;hapi-mongodb&#x27;, &#x27;error&#x27;], err);
+                return next(err);
+            }
+
+            expose.db = options.length === 1 ? dbs[0] : dbs;
+
+            if (decorationTypes.has(&#x27;boolean&#x27;)) {
+                server.decorate(&#x27;server&#x27;, &#x27;mongo&#x27;, expose);
+                server.decorate(&#x27;request&#x27;, &#x27;mongo&#x27;, expose);
+            }
+            else if (decorationTypes.has(&#x27;undefined&#x27;)) {
+                Object.keys(expose).forEach((key) =&#x3e; {
+
+                    server.expose(key, expose[key]);
+                });
+            }
+
+            server.on(&#x27;stop&#x27;, () =&#x3e; {
+
+                [].concat(expose.db).forEach((db) =&#x3e; {
+
+                    db.close((err) =&#x3e; server.log([&#x27;hapi-mongodb&#x27;, &#x27;error&#x27;], err));
+                });
+            });
+
+            next();
+        });
+    });
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+    poolSize: 10
+},
+decorate: true
+};
+
+const server = new Hapi.Server();
+
+server.<span class="apidocCodeKeywordSpan">register</span>({
+register: require(&#x27;hapi-mongodb&#x27;),
+options: dbOpts
+}, function (err) {
+if (err) {
+    console.error(err);
+    throw err;
+}
+...</pre></li>
+    </ul>
+
+
+</div>
+
+<div class="apidocFooterDiv">
+    [ this document was created with
+    <a href="https://github.com/kaizhu256/node-utility2" target="_blank">utility2</a>
+    ]
+</div>
+</div>
